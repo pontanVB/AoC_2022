@@ -2,6 +2,7 @@
 #include <iostream>
 #include <list>
 #include <map>
+#include <vector>
 using namespace std;
 
 int strcmp ( const char * str1, const char * str2 );
@@ -17,9 +18,10 @@ class File {
 class Folder {    // The class
   public:         // Access specifier
     string Name;  // Attribute (string variable)
-    list<Folder> sub_folders;
+    map<string, Folder> sub_folders;
     list<File> files;
     long get_total_value();
+    Folder*parent_folder;
     
 };
 
@@ -29,8 +31,13 @@ long Folder::get_total_value()
     for(File f : files)
         total_val += f.size;
 
-    for(Folder f : sub_folders)
-        total_val += f.get_total_value();
+    for (auto const& x : sub_folders)
+    {
+        Folder tmp_folder = x.second;
+        total_val += tmp_folder.get_total_value();
+    }
+
+    //cout << Name << ", value:" << total_val << '\n';
 
     return total_val;
 }
@@ -57,6 +64,21 @@ list<string> split_string(string text, char delim)
     return temp_vec;
 }
 
+vector<Folder> get_all_sub_folders(Folder f)
+{
+    vector<Folder> all_sub_folders;
+
+    all_sub_folders.push_back(f);
+
+    for (auto const& x : f.sub_folders)
+    {
+        vector<Folder> sub_folders = get_all_sub_folders(x.second);
+        all_sub_folders.insert(all_sub_folders.end(), sub_folders.begin(), sub_folders.end());
+    }
+    
+    return all_sub_folders;
+}
+
 
 int main()
 {
@@ -68,10 +90,6 @@ int main()
 
     Folder start_folder;
     start_folder.Name = "/";
-
-    map<string, Folder> all_folders = {{"/", start_folder}};
-
-    string s = "";
 
 
     Folder*curr_folder = &start_folder;
@@ -93,9 +111,12 @@ int main()
                     inputs.pop_front();
                     Folder tmp_folder;
                     tmp_folder.Name = inputs.front();
+                    tmp_folder.parent_folder = curr_folder;
                     inputs.pop_front();
-                    all_folders[tmp_folder.Name] = tmp_folder;
-                    curr_folder->sub_folders.push_front(tmp_folder);
+                    curr_folder->sub_folders[tmp_folder.Name] = tmp_folder;
+
+                    //cout << curr_folder->sub_folders[tmp_folder.Name].Name 
+                    //     << " parent folder : " << tmp_folder.parent_folder->Name << '\n';
                 }
                 else if(inputs.front() == "$")
                 {
@@ -118,8 +139,15 @@ int main()
             inputs.pop_front();
             //cout << inputs.front() << ' ';
 
-            if (inputs.front() != "..")
-               curr_folder = &all_folders[inputs.front()];
+            if (inputs.front() == "/")
+                curr_folder = &start_folder;
+            else if (inputs.front() != "..")
+            {
+                //cout << curr_folder->sub_folders[inputs.front()].Name << '\n';
+                curr_folder = &curr_folder->sub_folders[inputs.front()];
+            }
+            else
+                curr_folder = curr_folder->parent_folder;
 
             inputs.pop_front();
         }
@@ -127,19 +155,25 @@ int main()
             inputs.pop_front(); 
 
     }
-    
-    int sum = 0;
-    for (auto const& x : all_folders)
-    {
-        int tmp_int = 0;
-        Folder tmp_folder = x.second;
-        tmp_int = tmp_folder.get_total_value();
 
-        if (tmp_int <= 100000)
-            sum += tmp_int;
-        
+    int sum = 0;
+    int unused_space = 70000000 - start_folder.get_total_value();
+    int needed_space = 30000000;
+    int smallest_dir_size = 70000000;
+    
+    //cout << start_folder.Name << ' ' << start_folder.get_total_value() << '\n';
+    for (Folder f : get_all_sub_folders(start_folder))
+    {
+        //cout << f.Name << ", Value: " << f.get_total_value() << '\n';
+        int x = f.get_total_value();
+        if(unused_space + x > needed_space && x < smallest_dir_size)
+        {
+            smallest_dir_size = x;
+        }
     }
-    cout << sum;
+
+    cout << smallest_dir_size;
+    
     
 
 }
